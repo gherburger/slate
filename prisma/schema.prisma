@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum SpendSource {
+  MANUAL
+  BULK_PASTE
+}
+
+enum AuditAction {
+  CREATE
+  OVERWRITE
+  DELETE
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  memberships         Membership[]
+  createdSpendEntries SpendEntry[] @relation("UserCreatedSpendEntries")
+  spendAudits         SpendAudit[] @relation("UserSpendAudits")
+}
+
+model Org {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  memberships  Membership[]
+  spendEntries SpendEntry[]
+  spendAudits  SpendAudit[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String
+  role      Role     @default(VIEWER)
+  createdAt DateTime @default(now())
+
+  org  Org  @relation(fields: [orgId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([orgId, userId])
+  @@index([userId])
+}
+
+model SpendEntry {
+  id          String   @id @default(cuid())
+  orgId       String
+  platform    String
+  date        DateTime
+  amountCents Int
+  currency    String   @default("USD")
+
+  source SpendSource @default(MANUAL)
+  notes  String?
+
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  org         Org          @relation(fields: [orgId], references: [id])
+  createdBy   User?        @relation("UserCreatedSpendEntries", fields: [createdByUserId], references: [id])
+  spendAudits SpendAudit[]
+
+  @@index([orgId, date])
+  @@index([orgId, platform, date])
+}
+
+model SpendAudit {
+  id           String      @id @default(cuid())
+  orgId        String
+  spendEntryId String?
+  action       AuditAction
+  beforeJson   Json?
+  afterJson    Json?
+  actorUserId  String
+  createdAt    DateTime    @default(now())
+
+  org        Org         @relation(fields: [orgId], references: [id])
+  actor      User        @relation("UserSpendAudits", fields: [actorUserId], references: [id])
+  spendEntry SpendEntry? @relation(fields: [spendEntryId], references: [id])
+
+  @@index([orgId, spendEntryId])
+  @@index([orgId, createdAt])
+  @@index([actorUserId, createdAt])
+}
