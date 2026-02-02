@@ -1,3 +1,48 @@
+# Slate (working name)
+
+Multi-tenant ad spend tracking (manual-first). Postgres source of truth. Sheets export-only.
+
+## Stack
+- Next.js (App Router)
+- Postgres (Neon)
+- Prisma
+- Clerk (auth + org membership)
+- Stripe (per-user billing)
+- Vercel (hosting)
+
+## Local setup
+1. Install deps
+   npm i
+
+2. Copy env template
+   cp .env.example .env.development.local
+
+3. Run migrations
+   npx prisma migrate dev
+
+4. Start
+   npm run dev
+
+## Scripts
+- npm run lint
+- npm run typecheck
+- npm run build
+
+## Environments
+- dev: local
+- staging: pre-prod validation
+- prod: live
+
+
+
+
+
+
+
+
+
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
