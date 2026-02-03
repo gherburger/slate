@@ -1,4 +1,13 @@
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  UserButton,
+  OrganizationSwitcher,
+} from "@clerk/nextjs";
+import Link from "next/link";
+
+
 
 export default function Home() {
   return (
@@ -11,7 +20,11 @@ export default function Home() {
       </SignedOut>
 
       <SignedIn>
+        <OrganizationSwitcher />
         <p>You are signed in.</p>
+        <p>
+          <Link href="/organization-profile">Organization settings</Link>
+        </p>
         <UserButton afterSignOutUrl="/" />
       </SignedIn>
 
