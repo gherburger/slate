@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 
 export async function PUT(
   req: NextRequest,
-  ctx: { params: { id: string } }
+  ctx: { params: Promise<{ id: string }> }
 ) {
-  const spendEntryId = ctx.params.id;
+  const { id: spendEntryId } = await ctx.params;
   const body = await req.json();
 
   const { orgId, platformId, date, amountCents, currency, notes } = body;
