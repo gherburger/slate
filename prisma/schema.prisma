@@ -65,6 +65,7 @@ model Membership {
 model Platform {
   id        String   @id @default(cuid())
   orgId     String
+  key       String
   name      String
   createdAt DateTime @default(now())
 
@@ -72,6 +73,7 @@ model Platform {
   spendEntries SpendEntry[]
 
   @@unique([orgId, name])
+  @@unique([orgId, key])
   @@index([orgId])
 }
 
@@ -81,6 +83,7 @@ model SpendEntry {
 
   platformId String
   platform   Platform @relation(fields: [platformId], references: [id])
+  platformKey String
 
   date        DateTime
   amountCents Int
@@ -99,6 +102,8 @@ model SpendEntry {
 
   @@index([orgId, date])
   @@index([orgId, platformId, date])
+  @@index([orgId, platformKey, date])
+  @@unique([orgId, platformKey, date])
 }
 
 model SpendAudit {
