@@ -8,15 +8,16 @@ export default async function OrgLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { orgId: string };
+  params: Promise<{ orgId: string }>;
 }) {
+  const { orgId } = await params;
   const { userId } = await auth();
   if (!userId) return redirect("/sign-in");
 
   const membership = await prisma.membership.findUnique({
     where: {
       orgId_userId: {
-        orgId: params.orgId,
+        orgId,
         userId,
       },
     },
