@@ -1,7 +1,7 @@
 // app/org/[orgId]/layout.tsx
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 
 export default async function OrgLayout({
   children,
@@ -11,7 +11,7 @@ export default async function OrgLayout({
   params: { orgId: string };
 }) {
   const { userId } = await auth();
-  if (!userId) return notFound(); // or redirect("/sign-in")
+  if (!userId) return redirect("/sign-in");
 
   const membership = await prisma.membership.findUnique({
     where: {
@@ -23,7 +23,7 @@ export default async function OrgLayout({
     include: { org: true },
   });
 
-  if (!membership) return notFound(); // or a 403 page
+  if (!membership) return redirect("/403");
 
   // Optional: render a basic shell with org name / role
   return (
