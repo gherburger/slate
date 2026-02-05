@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,7 +8,6 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-
 
 enum Role {
   ADMIN
@@ -41,14 +37,15 @@ model User {
 }
 
 model Org {
-  id        String   @id @default(cuid())
-  externalId String  @unique // Clerk organization.id
-  name      String
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  externalId String   @unique // Clerk organization.id
+  name       String
+  createdAt  DateTime @default(now())
 
   memberships  Membership[]
   spendEntries SpendEntry[]
   spendAudits  SpendAudit[]
+  platforms    Platform[]
 }
 
 model Membership {
@@ -65,10 +62,26 @@ model Membership {
   @@index([userId])
 }
 
+model Platform {
+  id        String   @id @default(cuid())
+  orgId     String
+  name      String
+  createdAt DateTime @default(now())
+
+  org          Org          @relation(fields: [orgId], references: [id])
+  spendEntries SpendEntry[]
+
+  @@unique([orgId, name])
+  @@index([orgId])
+}
+
 model SpendEntry {
-  id          String   @id @default(cuid())
-  orgId       String
-  platform    String
+  id    String @id @default(cuid())
+  orgId String
+
+  platformId String
+  platform   Platform @relation(fields: [platformId], references: [id])
+
   date        DateTime
   amountCents Int
   currency    String   @default("USD")
@@ -85,7 +98,7 @@ model SpendEntry {
   spendAudits SpendAudit[]
 
   @@index([orgId, date])
-  @@index([orgId, platform, date])
+  @@index([orgId, platformId, date])
 }
 
 model SpendAudit {
