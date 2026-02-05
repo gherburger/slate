@@ -45,7 +45,6 @@ model Org {
   memberships  Membership[]
   spendEntries SpendEntry[]
   spendAudits  SpendAudit[]
-  platforms    Platform[]
 }
 
 model Membership {
@@ -64,17 +63,13 @@ model Membership {
 
 model Platform {
   id        String   @id @default(cuid())
-  orgId     String
   key       String
   name      String
   createdAt DateTime @default(now())
 
-  org          Org          @relation(fields: [orgId], references: [id])
   spendEntries SpendEntry[]
 
-  @@unique([orgId, name])
-  @@unique([orgId, key])
-  @@index([orgId])
+  @@unique([key])
 }
 
 model SpendEntry {

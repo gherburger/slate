@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { normalizePlatform } from "@/lib/normalize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * POST /api/platforms
- * Body: { name: string }
+ * Body: { name: string, orgId: string }
  * Role required: ADMIN or EDITOR
  */
 export async function POST(req: NextRequest) {
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const platform = await prisma.platform.create({
     data: {
-      orgId,
+      key: normalizePlatform(name),
       name,
     },
   });
@@ -55,11 +56,9 @@ export async function GET(req: NextRequest) {
   if (!membership) return new Response("Forbidden", { status: 403 });
 
   const platforms = await prisma.platform.findMany({
-    where: { orgId },
     orderBy: { name: "asc" },
   });
 
   return Response.json(platforms);
 }
-
 
