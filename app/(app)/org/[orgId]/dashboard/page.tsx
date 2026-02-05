@@ -4,16 +4,18 @@ import { prisma } from "@/lib/prisma";
 export default async function DashboardPage({
   params,
 }: {
-  params: { orgId: string };
+  params: Promise<{ orgId: string }>;
 }) {
+  const { orgId } = await params;
   const spendCount = await prisma.spendEntry.count({
-    where: { orgId: params.orgId },
+    where: { orgId },
   });
 
   const recent = await prisma.spendEntry.findMany({
-    where: { orgId: params.orgId },
+    where: { orgId },
     orderBy: { date: "desc" },
     take: 10,
+    include: { platform: true },
   });
 
   return (
@@ -25,7 +27,8 @@ export default async function DashboardPage({
       <ul>
         {recent.map((e) => (
           <li key={e.id}>
-            {e.platform} — {e.amountCents / 100} {e.currency} —{" "}
+            {e.platform?.name ?? e.platformKey} — {e.amountCents / 100}{" "}
+            {e.currency} —{" "}
             {new Date(e.date).toLocaleDateString()}
           </li>
         ))}
