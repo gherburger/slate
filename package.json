@@ -14,6 +14,9 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate"
   },
+  "prisma": {
+    "seed": "tsx scripts/seed-platforms.ts"
+  },
   "dependencies": {
     "@clerk/nextjs": "^6.37.1",
     "@prisma/adapter-pg": "^7.3.0",
@@ -32,6 +35,7 @@
     "eslint-config-next": "16.1.6",
     "prisma": "^7.3.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
