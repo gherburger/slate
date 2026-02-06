@@ -121,3 +121,10 @@ model SpendAudit {
   @@index([orgId, createdAt])
   @@index([actorUserId, createdAt])
 }
+
+model WebhookEvent {
+  id        String   @id @default(cuid())
+  source    String
+  eventId   String   @unique
+  createdAt DateTime @default(now())
+}
