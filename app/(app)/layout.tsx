@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { ensureDbUser } from "@/lib/ensure-user";
 import { prisma } from "@/lib/prisma";
+import OrgDropdown from "@/app/(app)/org/OrgDropdown";
 
 const workspaceLinks = [
   { label: "Dashboard", active: false },
@@ -36,37 +37,14 @@ export default async function AppLayout({
       <header className="app-topbar">
         <div className="topbar-left">
           <div className="logo-badge">S</div>
-          <div className="org-dropdown">
-            <button className="org-trigger" type="button">
-              <span className="org-name">
-                {currentOrg?.name ?? "Organization Name"}
-              </span>
-              <span className="org-caret">▾</span>
-            </button>
-            <div className="org-menu" role="menu">
-              {memberships.map((membership, index) => (
-                <button
-                  className={`org-item ${
-                    index === 0 ? "is-current" : ""
-                  }`}
-                  key={membership.id}
-                  type="button"
-                  role="menuitem"
-                >
-                  <span className="org-check">✓</span>
-                  {membership.org.name}
-                </button>
-              ))}
-              {memberships.length === 0 && (
-                <div className="org-item is-empty">No organizations yet</div>
-              )}
-              <div className="org-divider" />
-              <button className="org-item" type="button" role="menuitem">
-                <span className="org-plus">＋</span>
-                Create Workspace
-              </button>
-            </div>
-          </div>
+          <OrgDropdown
+            currentOrgName={currentOrg?.name ?? "Organization Name"}
+            memberships={memberships.map((membership, index) => ({
+              id: membership.id,
+              name: membership.org.name,
+              isCurrent: index === 0,
+            }))}
+          />
         </div>
         <div className="topbar-right">
           <span className="status-pill">
