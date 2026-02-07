@@ -405,7 +405,7 @@ button:disabled,
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 2px 10px;
   border-radius: 14px;
   font-size: 14px;
   color: #3b372f;
@@ -419,6 +419,7 @@ button:disabled,
 
 .tables-item:hover:not(.is-active) {
   background: #e4f4ff;
+  border-radius: 6px;
 }
 
 .tables-icon {

@@ -21,7 +21,7 @@ export async function PUT(
   const platform = platformId
     ? await prisma.platform.findUnique({
         where: { id: platformId },
-        select: { id: true, key: true },
+        select: { id: true },
       })
     : null;
 
@@ -40,7 +40,6 @@ export async function PUT(
       where: { id: spendEntryId },
       data: {
         platformId: platform?.id,
-        platformKey: platform?.key,
         date: date ? new Date(date) : undefined,
         amountCents,
         currency,

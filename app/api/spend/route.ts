@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { normalizePlatform } from "@/lib/normalize";
 import { requireRole } from "@/lib/authz";
 import { Prisma } from "@prisma/client";
 
@@ -20,19 +19,16 @@ export async function POST(req: NextRequest) {
 
   const platform = await prisma.platform.findUnique({
     where: { id: platformId },
-    select: { id: true, key: true },
+    select: { id: true },
   });
 
   if (!platform) return new Response("platform not found", { status: 404 });
-
-  const platformKey = platform.key;
 
   try {
     const spend = await prisma.spendEntry.create({
       data: {
         orgId,
         platformId: platform.id,
-        platformKey,
         date: new Date(date),
         amountCents,
         createdByUserId: authz.userId,
@@ -50,7 +46,7 @@ export async function POST(req: NextRequest) {
         {
           error: "DUPLICATE_SPEND_ENTRY",
           message: "Spend entry already exists for org + date + platform.",
-          key: { orgId, date, platformKey },
+          key: { orgId, date, platformId },
         },
         { status: 409 }
       );

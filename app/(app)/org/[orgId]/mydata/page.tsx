@@ -93,7 +93,7 @@ export default async function TablesPage({
                     <input type="checkbox" />
                   </td>
                   <td className="mono">{entry.id.slice(0, 12)}…</td>
-                  <td>{entry.platform?.name ?? entry.platformKey}</td>
+                  <td>{entry.platform?.name ?? entry.platform?.key}</td>
                   <td>{(entry.amountCents / 100).toFixed(2)}</td>
                   <td>
                     {new Date(entry.date).toLocaleString("en-US", {

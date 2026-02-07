@@ -26,6 +26,25 @@ enum AuditAction {
   DELETE
 }
 
+enum PlatformScope {
+  GLOBAL
+  ORG
+}
+
+enum IntegrationProvider {
+  META
+  GOOGLE_ADS
+  LINKEDIN_ADS
+  TIKTOK_ADS
+  AMAZON_ADS
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  DISCONNECTED
+  ERROR
+}
+
 model User {
   id        String   @id
   email     String   @unique
@@ -44,9 +63,11 @@ model Org {
   name       String
   createdAt  DateTime @default(now())
 
-  memberships  Membership[]
-  spendEntries SpendEntry[]
-  spendAudits  SpendAudit[]
+  memberships           Membership[]
+  spendEntries          SpendEntry[]
+  spendAudits           SpendAudit[]
+  platforms             Platform[]
+  integrationConnections IntegrationConnection[]
 }
 
 model Membership {
@@ -64,14 +85,21 @@ model Membership {
 }
 
 model Platform {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
+  scope     PlatformScope @default(ORG)
+  orgId     String?
   key       String
   name      String
-  createdAt DateTime @default(now())
+  provider  IntegrationProvider?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @default(now()) @updatedAt
 
+  org          Org?        @relation(fields: [orgId], references: [id])
   spendEntries SpendEntry[]
 
-  @@unique([key])
+  @@unique([orgId, key])
+  @@index([orgId])
+  @@index([scope, provider])
 }
 
 model SpendEntry {
@@ -80,7 +108,6 @@ model SpendEntry {
 
   platformId String
   platform   Platform @relation(fields: [platformId], references: [id])
-  platformKey String
 
   date        DateTime
   amountCents Int
@@ -97,10 +124,34 @@ model SpendEntry {
   createdBy   User?        @relation("UserCreatedSpendEntries", fields: [createdByUserId], references: [id])
   spendAudits SpendAudit[]
 
+  @@unique([orgId, platformId, date])
   @@index([orgId, date])
   @@index([orgId, platformId, date])
-  @@index([orgId, platformKey, date])
-  @@unique([orgId, platformKey, date])
+}
+
+model IntegrationConnection {
+  id        String             @id @default(cuid())
+  orgId     String
+  provider  IntegrationProvider
+  status    IntegrationStatus  @default(ACTIVE)
+
+  externalAccountId String?
+
+  accessTokenCiphertext  String?
+  refreshTokenCiphertext String?
+  expiresAt              DateTime?
+
+  scopes       String?
+  lastSyncedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org Org @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, provider])
+  @@index([orgId, provider])
+  @@index([status])
 }
 
 model SpendAudit {
