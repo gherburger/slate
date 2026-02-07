@@ -2,40 +2,68 @@ import { prisma } from "../lib/prisma";
 import { normalizePlatform } from "../lib/normalize";
 
 async function main() {
-  await prisma.platform.upsert({
-    where: { orgId_key: { orgId: null, key: normalizePlatform("Google Ads") } },
-    update: { name: "Google Ads" },
-    create: {
-      key: normalizePlatform("Google Ads"),
-      name: "Google Ads",
-      scope: "GLOBAL",
-      provider: "GOOGLE_ADS",
-    },
+  const googleKey = normalizePlatform("Google Ads");
+  const googleExisting = await prisma.platform.findFirst({
+    where: { orgId: null, key: googleKey },
   });
 
-  await prisma.platform.upsert({
-    where: { orgId_key: { orgId: null, key: normalizePlatform("Meta") } },
-    update: { name: "Meta" },
-    create: {
-      key: normalizePlatform("Meta"),
-      name: "Meta",
-      scope: "GLOBAL",
-      provider: "META",
-    },
+  if (googleExisting) {
+    await prisma.platform.update({
+      where: { id: googleExisting.id },
+      data: { name: "Google Ads" },
+    });
+  } else {
+    await prisma.platform.create({
+      data: {
+        key: googleKey,
+        name: "Google Ads",
+        scope: "GLOBAL",
+        provider: "GOOGLE_ADS",
+      },
+    });
+  }
+
+  const metaKey = normalizePlatform("Meta");
+  const metaExisting = await prisma.platform.findFirst({
+    where: { orgId: null, key: metaKey },
   });
 
-  await prisma.platform.upsert({
-    where: {
-      orgId_key: { orgId: null, key: normalizePlatform("LinkedIn Ads") },
-    },
-    update: { name: "LinkedIn Ads" },
-    create: {
-      key: normalizePlatform("LinkedIn Ads"),
-      name: "LinkedIn Ads",
-      scope: "GLOBAL",
-      provider: "LINKEDIN_ADS",
-    },
+  if (metaExisting) {
+    await prisma.platform.update({
+      where: { id: metaExisting.id },
+      data: { name: "Meta" },
+    });
+  } else {
+    await prisma.platform.create({
+      data: {
+        key: metaKey,
+        name: "Meta",
+        scope: "GLOBAL",
+        provider: "META",
+      },
+    });
+  }
+
+  const linkedinKey = normalizePlatform("LinkedIn Ads");
+  const linkedinExisting = await prisma.platform.findFirst({
+    where: { orgId: null, key: linkedinKey },
   });
+
+  if (linkedinExisting) {
+    await prisma.platform.update({
+      where: { id: linkedinExisting.id },
+      data: { name: "LinkedIn Ads" },
+    });
+  } else {
+    await prisma.platform.create({
+      data: {
+        key: linkedinKey,
+        name: "LinkedIn Ads",
+        scope: "GLOBAL",
+        provider: "LINKEDIN_ADS",
+      },
+    });
+  }
 }
 
 main()
