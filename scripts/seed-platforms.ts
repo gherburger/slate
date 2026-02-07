@@ -3,21 +3,38 @@ import { normalizePlatform } from "../lib/normalize";
 
 async function main() {
   await prisma.platform.upsert({
-    where: { key: normalizePlatform("Google Ads") },
+    where: { orgId_key: { orgId: null, key: normalizePlatform("Google Ads") } },
     update: { name: "Google Ads" },
-    create: { key: normalizePlatform("Google Ads"), name: "Google Ads" },
+    create: {
+      key: normalizePlatform("Google Ads"),
+      name: "Google Ads",
+      scope: "GLOBAL",
+      provider: "GOOGLE_ADS",
+    },
   });
 
   await prisma.platform.upsert({
-    where: { key: normalizePlatform("Meta") },
+    where: { orgId_key: { orgId: null, key: normalizePlatform("Meta") } },
     update: { name: "Meta" },
-    create: { key: normalizePlatform("Meta"), name: "Meta" },
+    create: {
+      key: normalizePlatform("Meta"),
+      name: "Meta",
+      scope: "GLOBAL",
+      provider: "META",
+    },
   });
 
   await prisma.platform.upsert({
-    where: { key: normalizePlatform("LinkedIn Ads") },
+    where: {
+      orgId_key: { orgId: null, key: normalizePlatform("LinkedIn Ads") },
+    },
     update: { name: "LinkedIn Ads" },
-    create: { key: normalizePlatform("LinkedIn Ads"), name: "LinkedIn Ads" },
+    create: {
+      key: normalizePlatform("LinkedIn Ads"),
+      name: "LinkedIn Ads",
+      scope: "GLOBAL",
+      provider: "LINKEDIN_ADS",
+    },
   });
 }
 
