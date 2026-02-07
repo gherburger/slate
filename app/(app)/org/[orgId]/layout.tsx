@@ -14,29 +14,12 @@ export default async function OrgLayout({
   const { userId } = await auth();
   if (!userId) return redirect("/sign-in");
 
-  const membership = await prisma.membership.findUnique({
-    where: {
-      orgId_userId: {
-        orgId,
-        userId,
-      },
-    },
+  const membership = await prisma.membership.findFirst({
+    where: { orgId, userId },
     include: { org: true },
   });
 
   if (!membership) return redirect("/403");
 
-  // Optional: render a basic shell with org name / role
-  return (
-    <div style={{ padding: 24, fontFamily: "system-ui" }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ fontWeight: 600 }}>{membership.org.name}</div>
-          <div style={{ opacity: 0.7, fontSize: 12 }}>Role: {membership.role}</div>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 16 }}>{children}</div>
-    </div>
-  );
+  return <>{children}</>;
 }

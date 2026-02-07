@@ -1,33 +1,16 @@
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
-  OrganizationSwitcher,
-} from "@clerk/nextjs";
-import Link from "next/link";
+import { SignInButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
+export default async function Home() {
+  const { userId } = await auth();
+  if (userId) return redirect("/org");
 
-
-export default function Home() {
   return (
     <main style={{ padding: 24, fontFamily: "system-ui" }}>
       <h1>Slate</h1>
-
-      <SignedOut>
-        <p>You are signed out.</p>
-        <SignInButton />
-      </SignedOut>
-
-      <SignedIn>
-        <OrganizationSwitcher />
-        <p>You are signed in.</p>
-        <p>
-          <Link href="/organization-profile">Organization settings</Link>
-        </p>
-        <UserButton afterSignOutUrl="/" />
-      </SignedIn>
-
+      <p>You are signed out.</p>
+      <SignInButton />
       <p>env: {process.env.NEXT_PUBLIC_APP_ENV ?? "unknown"}</p>
     </main>
   );

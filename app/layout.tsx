@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space",
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
+  weight: ["400", "500", "600"],
   subsets: ["latin"],
 });
 
@@ -29,7 +30,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body
-          className={`${spaceGrotesk.variable} ${plexMono.variable} antialiased`}
+          className={`${plexSans.variable} ${plexMono.variable} antialiased`}
         >
           {children}
         </body>
