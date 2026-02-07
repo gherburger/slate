@@ -34,7 +34,6 @@ export default async function TablesPage({
                   key={name}
                   className={`tables-item ${name === "Org" ? "is-active" : ""}`}
                 >
-                  <span className="tables-icon">▦</span>
                   {name}
                 </div>
               )
@@ -46,7 +45,6 @@ export default async function TablesPage({
           <div className="tables-list">
             {["SpendAudit", "SpendEntry", "User", "WebhookEvent"].map((name) => (
               <div key={name} className="tables-item">
-                <span className="tables-icon">▦</span>
                 {name}
               </div>
             ))}

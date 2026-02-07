@@ -4,6 +4,7 @@ import TopbarOrgSwitcher from "@/app/(app)/org/TopbarOrgSwitcher";
 import TopbarUserMenu from "@/app/(app)/org/TopbarUserMenu";
 import SidebarNav from "@/app/(app)/org/SidebarNav";
 import { prisma } from "@/lib/prisma";
+import { ArrowDownUp } from "lucide-react";
 
 export default async function AppLayout({
   children,
@@ -48,20 +49,8 @@ export default async function AppLayout({
             <p className="sidebar-title">Developer</p>
             <nav className="sidebar-nav">
               <div className="sidebar-link">
-                <span className="sidebar-icon">⎈</span>
-                Data API
-              </div>
-              <div className="sidebar-link">
-                <span className="sidebar-icon">⎈</span>
+                <ArrowDownUp size={16} className="sidebar-icon" aria-hidden="true" />
                 Integrations
-              </div>
-              <div className="sidebar-link">
-                <span className="sidebar-icon">⎈</span>
-                Auth
-              </div>
-              <div className="sidebar-link">
-                <span className="sidebar-icon">⎈</span>
-                Settings
               </div>
             </nav>
           </div>

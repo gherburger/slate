@@ -315,6 +315,10 @@ button:disabled,
   cursor: default;
 }
 
+.sidebar-link.is-active .sidebar-icon {
+  stroke-width: 2.2;
+}
+
 .sidebar-link:hover:not(.is-active) {
   background: #eaeaea;
 }
@@ -388,7 +392,7 @@ button:disabled,
 .tables-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .tables-group {
@@ -400,8 +404,8 @@ button:disabled,
 .tables-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border-radius: 14px;
   font-size: 14px;
   color: #3b372f;
