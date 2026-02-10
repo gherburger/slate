@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { normalizePlatform } from "@/lib/normalize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +19,12 @@ export async function POST(req: NextRequest) {
     return new Response("name and orgId required", { status: 400 });
   }
 
+  const normalizedName = String(name).toLowerCase();
+  const validName = /^[a-z0-9_-]+$/.test(normalizedName);
+  if (!validName) {
+    return new Response("Invalid name format", { status: 400 });
+  }
+
   // 🔒 Role enforcement
   const membership = await prisma.membership.findUnique({
     where: { orgId_userId: { orgId, userId } },
@@ -29,10 +34,25 @@ export async function POST(req: NextRequest) {
     return new Response("Forbidden", { status: 403 });
   }
 
+  const globalConflict = await prisma.platform.findFirst({
+    where: {
+      scope: "GLOBAL",
+      OR: [{ key: normalizedName }, { name: normalizedName }],
+    },
+  });
+
+  if (globalConflict) {
+    return new Response("Name conflicts with a global platform", {
+      status: 409,
+    });
+  }
+
   const platform = await prisma.platform.create({
     data: {
-      key: normalizePlatform(name),
-      name,
+      key: normalizedName,
+      name: normalizedName,
+      scope: "ORG",
+      orgId,
     },
   });
 
@@ -61,4 +81,3 @@ export async function GET(req: NextRequest) {
 
   return Response.json(platforms);
 }
-
