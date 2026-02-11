@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { CirclePlus } from "lucide-react";
 import AddDataSetModal from "@/app/(app)/org/[orgId]/mydata/AddDataSetModal";
 import AddRecordModal from "@/app/(app)/org/[orgId]/mydata/AddRecordModal";
-import Link from "next/link";
+import PlatformMenu from "@/app/(app)/org/[orgId]/mydata/PlatformMenu";
+
+export const dynamic = "force-dynamic";
 
 export default async function TablesPage({
   params,
@@ -15,13 +17,13 @@ export default async function TablesPage({
   const { orgId } = await params;
 
   const customPlatforms = await prisma.platform.findMany({
-    where: { scope: "ORG", orgId },
+    where: { orgId, provider: null },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
 
   const integrationPlatforms = await prisma.platform.findMany({
-    where: { scope: "GLOBAL" },
+    where: { orgId, provider: { not: null } },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
@@ -51,18 +53,7 @@ export default async function TablesPage({
         <div className="tables-group">
           <p className="sidebar-title">Custom</p>
           <div className="tables-list">
-            {customPlatforms.map((platform) => {
-              const isActive = platform.id === selectedPlatformId;
-              return (
-                <Link
-                  key={platform.id}
-                  href={`${baseHref}?platformId=${platform.id}`}
-                  className={`tables-item ${isActive ? "is-active" : ""}`}
-                >
-                  {platform.name}
-                </Link>
-              );
-            })}
+            <PlatformMenu platforms={customPlatforms} baseHref={baseHref} />
             <AddDataSetModal orgId={orgId}>
               <CirclePlus size={16} aria-hidden="true" />
               Add New Data Set
@@ -72,18 +63,7 @@ export default async function TablesPage({
         <div className="tables-group">
           <p className="sidebar-title">Integrations</p>
           <div className="tables-list">
-            {integrationPlatforms.map((platform) => {
-              const isActive = platform.id === selectedPlatformId;
-              return (
-                <Link
-                  key={platform.id}
-                  href={`${baseHref}?platformId=${platform.id}`}
-                  className={`tables-item ${isActive ? "is-active" : ""}`}
-                >
-                  {platform.name}
-                </Link>
-              );
-            })}
+            <PlatformMenu platforms={integrationPlatforms} baseHref={baseHref} />
             <div className="tables-item tables-item-add">
               <CirclePlus size={16} aria-hidden="true" />
               Add New App
@@ -96,7 +76,7 @@ export default async function TablesPage({
           <div className="toolbar-group">
             <button className="ghost-pill">Filters</button>
             <button className="ghost-pill">Columns</button>
-            <AddRecordModal />
+            <AddRecordModal orgId={orgId} fixedPlatformId={selectedPlatformId} />
           </div>
           <div className="toolbar-group is-right">
             <span className="toolbar-meta">{entries.length} rows</span>

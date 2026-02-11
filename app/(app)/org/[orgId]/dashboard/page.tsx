@@ -1,5 +1,6 @@
 // app/org/[orgId]/dashboard/page.tsx
 import { prisma } from "@/lib/prisma";
+import AddRecordModal from "@/app/(app)/org/[orgId]/mydata/AddRecordModal";
 
 export default async function DashboardPage({
   params,
@@ -9,6 +10,12 @@ export default async function DashboardPage({
   const { orgId } = await params;
   const spendCount = await prisma.spendEntry.count({
     where: { orgId },
+  });
+
+  const platforms = await prisma.platform.findMany({
+    where: { orgId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
   });
 
   return (
@@ -23,6 +30,9 @@ export default async function DashboardPage({
             My Data view moved to{" "}
             <code>/org/{orgId}/mydata</code>.
           </p>
+        </div>
+        <div style={{ marginTop: 20 }}>
+          <AddRecordModal orgId={orgId} platforms={platforms} />
         </div>
       </div>
     </section>

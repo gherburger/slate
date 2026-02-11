@@ -3,20 +3,42 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-const platformOptions = [
-  "Google Ads",
-  "Facebook Ads",
-  "LinkedIn Ads",
-  "New Platform 1",
-  "New Platform 2",
-];
+type PlatformOption = {
+  id: string;
+  name: string;
+};
 
-export default function AddRecordModal() {
+type AddRecordModalProps = {
+  orgId: string;
+  platforms?: PlatformOption[];
+  fixedPlatformId?: string | null;
+};
+
+export default function AddRecordModal({
+  orgId,
+  platforms = [],
+  fixedPlatformId = null,
+}: AddRecordModalProps) {
   const [open, setOpen] = useState(false);
   const [platformOpen, setPlatformOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dateValue, setDateValue] = useState("");
+  const [amountValue, setAmountValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(
+    fixedPlatformId ?? platforms[0]?.id ?? null
+  );
+  const [dateTouched, setDateTouched] = useState(false);
+  const [amountTouched, setAmountTouched] = useState(false);
+
+  useEffect(() => {
+    if (fixedPlatformId) {
+      setSelectedPlatformId(fixedPlatformId);
+    }
+  }, [fixedPlatformId]);
 
   useEffect(() => {
     setMounted(true);
@@ -45,6 +67,138 @@ export default function AddRecordModal() {
       document.body.style.overflow = "";
     };
   }, [open, mounted]);
+
+  function formatDateInput(value: string) {
+    const raw = value.replace(/[^0-9/]/g, "");
+    let digits = raw.replace(/\D/g, "");
+
+    if (raw.includes("/") && digits.length === 1) {
+      digits = `0${digits}`;
+    }
+
+    if (digits.length > 8) digits = digits.slice(0, 8);
+
+    const mm = digits.slice(0, 2);
+    const dd = digits.slice(2, 4);
+    const yyyy = digits.slice(4, 8);
+
+    if (!mm) return "";
+
+    let formatted = mm;
+    if (digits.length >= 2) formatted += "/";
+    if (digits.length > 2) formatted += dd;
+    if (digits.length >= 4) formatted += "/";
+    if (digits.length > 4) formatted += yyyy;
+
+    return formatted.slice(0, 10);
+  }
+
+  function formatAmountInput(value: string) {
+    let raw = value.replace(/[^0-9.,]/g, "");
+    const parts = raw.split(".");
+    if (parts.length > 1) {
+      raw = `${parts[0]}.${parts.slice(1).join("")}`;
+    }
+    return raw;
+  }
+
+  async function submitRecord(closeOnSuccess: boolean) {
+    if (isSubmitting) return;
+    const date = dateValue.trim();
+    const amount = amountValue.trim();
+    const platformId = selectedPlatformId;
+
+    if (!platformId) {
+      setError("Select a platform.");
+      return;
+    }
+
+    if (!date || !/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
+      setError("Enter a valid date (MM/DD/YYYY).");
+      return;
+    }
+
+    const [mm, dd, yyyy] = date.split("/").map((part) => Number(part));
+    if (mm < 1 || mm > 12) {
+      setError("Month must be between 01 and 12.");
+      return;
+    }
+    const maxDay = new Date(yyyy, mm, 0).getDate();
+    if (dd < 1 || dd > maxDay) {
+      setError("Day is not valid for the selected month.");
+      return;
+    }
+
+    if (!/^[0-9.,]+$/.test(amount)) {
+      setError("Enter a valid amount.");
+      return;
+    }
+
+    const amountNumber = Number(amount.replace(/,/g, ""));
+    if (!Number.isFinite(amountNumber)) {
+      setError("Enter a valid amount.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/spend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgId,
+          platformId,
+          date,
+          amountCents: Math.round(amountNumber * 100),
+        }),
+      });
+
+      if (!res.ok) {
+        const message = await res.text();
+        throw new Error(message || "Failed to create spend entry.");
+      }
+
+      if (closeOnSuccess) {
+        setOpen(false);
+      } else {
+        setDateValue("");
+        setAmountValue("");
+        setError(null);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to create spend entry."
+      );
+    } finally {
+      setTimeout(() => setIsSubmitting(false), 800);
+    }
+  }
+
+  const showPlatformSelector = !fixedPlatformId;
+  const selectedPlatform = platforms.find(
+    (platform) => platform.id === selectedPlatformId
+  );
+
+  const isDateFormatValid = /^\d{2}\/\d{2}\/\d{4}$/.test(dateValue);
+  let isDateValueValid = false;
+  if (isDateFormatValid) {
+    const [mm, dd, yyyy] = dateValue.split("/").map((part) => Number(part));
+    if (mm >= 1 && mm <= 12) {
+      const maxDay = new Date(yyyy, mm, 0).getDate();
+      isDateValueValid = dd >= 1 && dd <= maxDay;
+    }
+  }
+  const showDateError = dateTouched && dateValue.length > 0 && !isDateValueValid;
+
+  const isAmountValueValid =
+    amountValue.length === 0
+      ? false
+      : /^[0-9.,]+$/.test(amountValue) &&
+        Number.isFinite(Number(amountValue.replace(/,/g, "")));
+  const showAmountError =
+    amountTouched && amountValue.length > 0 && !isAmountValueValid;
 
   return (
     <>
@@ -81,54 +235,80 @@ export default function AddRecordModal() {
               <div className="modal-grid">
                 <label className="field">
                   <span>Date</span>
-                  <input type="text" placeholder="04/24/2024" />
+                  <input
+                    type="text"
+                    placeholder="04/24/2024"
+                    value={dateValue}
+                    onChange={(event) => {
+                      setDateValue(formatDateInput(event.target.value));
+                      if (!dateTouched) setDateTouched(true);
+                    }}
+                    className={showDateError ? "input-error" : undefined}
+                    inputMode="numeric"
+                  />
                 </label>
                 <label className="field">
                   <span>Spend</span>
                   <div className="currency-input">
                     <span className="currency-symbol">$</span>
-                    <input type="text" placeholder="0.00" />
+                    <input
+                      type="text"
+                      placeholder="0.00"
+                    value={amountValue}
+                      onChange={(event) => {
+                        setAmountValue(formatAmountInput(event.target.value));
+                        if (!amountTouched) setAmountTouched(true);
+                      }}
+                      className={showAmountError ? "input-error" : undefined}
+                      inputMode="decimal"
+                    />
                   </div>
                 </label>
-                <div className="field full" ref={dropdownRef}>
-                  <span>Platform</span>
-                  <button
-                    type="button"
-                    className={`platform-trigger ${
-                      platformOpen ? "is-open" : ""
-                    }`}
-                    onClick={() => setPlatformOpen((prev) => !prev)}
-                  >
-                    Select platform
-                    <span className="caret">▾</span>
-                  </button>
-                  {platformOpen && (
-                    <div className="platform-menu">
-                      {platformOptions.map((option) => (
-                        <button key={option} type="button">
-                          {option}
-                        </button>
-                      ))}
-                      <div className="platform-divider" />
-                      <button className="add-platform" type="button">
-                        + Add new platform
-                      </button>
-                    </div>
-                  )}
-                </div>
+                {showPlatformSelector && (
+                  <div className="field full" ref={dropdownRef}>
+                    <span>Platform</span>
+                    <button
+                      type="button"
+                      className={`platform-trigger ${
+                        platformOpen ? "is-open" : ""
+                      }`}
+                      onClick={() => setPlatformOpen((prev) => !prev)}
+                    >
+                      {selectedPlatform?.name ?? "Select platform"}
+                      <span className="caret">▾</span>
+                    </button>
+                    {platformOpen && (
+                      <div className="platform-menu">
+                        {platforms.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedPlatformId(option.id);
+                              setPlatformOpen(false);
+                            }}
+                          >
+                            {option.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+              {error && <div className="field-error">{error}</div>}
             <div className="modal-actions">
-              <button className="btn-secondary" disabled={isSubmitting}>
+              <button
+                className="btn-secondary"
+                disabled={isSubmitting}
+                onClick={() => submitRecord(false)}
+              >
                 Save & add another
               </button>
               <button
                 className="btn-primary"
                 disabled={isSubmitting}
-                onClick={() => {
-                  if (isSubmitting) return;
-                  setIsSubmitting(true);
-                  setTimeout(() => setIsSubmitting(false), 800);
-                }}
+                onClick={() => submitRecord(true)}
               >
                 Save record <span className="arrow">→</span>
               </button>

@@ -26,11 +26,6 @@ enum AuditAction {
   DELETE
 }
 
-enum PlatformScope {
-  GLOBAL
-  ORG
-}
-
 enum IntegrationProvider {
   META
   GOOGLE_ADS
@@ -86,20 +81,20 @@ model Membership {
 
 model Platform {
   id        String        @id @default(cuid())
-  scope     PlatformScope @default(ORG)
-  orgId     String?
+  orgId     String
   key       String
   name      String
   provider  IntegrationProvider?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @default(now()) @updatedAt
 
-  org          Org?        @relation(fields: [orgId], references: [id])
+  org          Org         @relation(fields: [orgId], references: [id])
   spendEntries SpendEntry[]
 
   @@unique([orgId, key])
+  @@unique([orgId, name])
   @@index([orgId])
-  @@index([scope, provider])
+  @@index([provider])
 }
 
 model SpendEntry {

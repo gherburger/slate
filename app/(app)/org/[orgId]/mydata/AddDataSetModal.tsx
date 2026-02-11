@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type AddDataSetModalProps = {
   orgId: string;
@@ -16,7 +17,11 @@ export default function AddDataSetModal({
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{
+    type: "global" | "generic";
+    message: string;
+    name?: string;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -44,10 +49,13 @@ export default function AddDataSetModal({
 
   async function handleSubmit() {
     if (isSubmitting) return;
-    const normalized = name.trim().toLowerCase();
-    const isValid = /^[a-z0-9_-]+$/.test(normalized);
-    if (!normalized || !isValid) {
-      setError("Only letters, numbers, '_' or '-' are allowed.");
+    const trimmed = name.trim();
+    const isValid = /^[a-zA-Z0-9 _\-()]+$/.test(trimmed);
+    if (!trimmed || !isValid) {
+      setError({
+        type: "generic",
+        message: "Only letters, numbers, spaces, '_', '-' or parentheses are allowed.",
+      });
       return;
     }
 
@@ -57,10 +65,13 @@ export default function AddDataSetModal({
       const res = await fetch("/api/platforms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: normalized, orgId }),
+        body: JSON.stringify({ name: trimmed, orgId }),
       });
 
       if (!res.ok) {
+        if (res.status === 409) {
+          throw new Error("ALREADY_EXISTS");
+        }
         const message = await res.text();
         throw new Error(message || "Failed to create data set.");
       }
@@ -71,11 +82,14 @@ export default function AddDataSetModal({
     } catch (err) {
       const raw =
         err instanceof Error ? err.message : "Failed to create data set.";
-      const friendly =
-        raw === "Name conflicts with a global platform"
-          ? "That name is reserved by a global platform."
-          : raw;
-      setError(friendly);
+      const displayName = name.trim();
+      setError({
+        type: "generic",
+        message:
+          raw === "ALREADY_EXISTS"
+            ? `${displayName} already exists.`
+            : raw,
+      });
     } finally {
       setTimeout(() => setIsSubmitting(false), 800);
     }
@@ -125,11 +139,24 @@ export default function AddDataSetModal({
                     placeholder="e.g. podcast_sponsorships"
                   />
                   <span className="field-note">
-                    Only letters, numbers, "_" or "-" characters.
+                    Only letters, numbers, spaces, "_" , "-" or parentheses.
                   </span>
                 </label>
               </div>
-              {error && <div className="field-error">{error}</div>}
+              {error && (
+                <div className="field-error">
+                  {error.type === "global" ? (
+                    <>
+                      {error.message}{" "}
+                      <Link className="field-error-link" href="/connections">
+                        Click here to add the {error.name} app →
+                      </Link>
+                    </>
+                  ) : (
+                    error.message
+                  )}
+                </div>
+              )}
               <div className="modal-actions">
                 <button
                   className="btn-primary"

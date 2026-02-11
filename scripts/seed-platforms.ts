@@ -2,68 +2,46 @@ import { prisma } from "../lib/prisma";
 import { normalizePlatform } from "../lib/normalize";
 
 async function main() {
-  const googleKey = normalizePlatform("Google Ads");
-  const googleExisting = await prisma.platform.findFirst({
-    where: { orgId: null, key: googleKey },
-  });
-
-  if (googleExisting) {
-    await prisma.platform.update({
-      where: { id: googleExisting.id },
-      data: { name: "Google Ads" },
-    });
-  } else {
-    await prisma.platform.create({
-      data: {
-        key: googleKey,
-        name: "Google Ads",
-        scope: "GLOBAL",
-        provider: "GOOGLE_ADS",
-      },
-    });
+  const orgId = process.env.SEED_ORG_ID;
+  if (!orgId) {
+    throw new Error("SEED_ORG_ID is required to seed platforms.");
   }
+
+  const googleKey = normalizePlatform("Google Ads");
+  await prisma.platform.upsert({
+    where: { orgId_key: { orgId, key: googleKey } },
+    update: { name: "Google Ads", provider: "GOOGLE_ADS" },
+    create: {
+      orgId,
+      key: googleKey,
+      name: "Google Ads",
+      provider: "GOOGLE_ADS",
+    },
+  });
 
   const metaKey = normalizePlatform("Meta");
-  const metaExisting = await prisma.platform.findFirst({
-    where: { orgId: null, key: metaKey },
+  await prisma.platform.upsert({
+    where: { orgId_key: { orgId, key: metaKey } },
+    update: { name: "Meta", provider: "META" },
+    create: {
+      orgId,
+      key: metaKey,
+      name: "Meta",
+      provider: "META",
+    },
   });
-
-  if (metaExisting) {
-    await prisma.platform.update({
-      where: { id: metaExisting.id },
-      data: { name: "Meta" },
-    });
-  } else {
-    await prisma.platform.create({
-      data: {
-        key: metaKey,
-        name: "Meta",
-        scope: "GLOBAL",
-        provider: "META",
-      },
-    });
-  }
 
   const linkedinKey = normalizePlatform("LinkedIn Ads");
-  const linkedinExisting = await prisma.platform.findFirst({
-    where: { orgId: null, key: linkedinKey },
+  await prisma.platform.upsert({
+    where: { orgId_key: { orgId, key: linkedinKey } },
+    update: { name: "LinkedIn Ads", provider: "LINKEDIN_ADS" },
+    create: {
+      orgId,
+      key: linkedinKey,
+      name: "LinkedIn Ads",
+      provider: "LINKEDIN_ADS",
+    },
   });
-
-  if (linkedinExisting) {
-    await prisma.platform.update({
-      where: { id: linkedinExisting.id },
-      data: { name: "LinkedIn Ads" },
-    });
-  } else {
-    await prisma.platform.create({
-      data: {
-        key: linkedinKey,
-        name: "LinkedIn Ads",
-        scope: "GLOBAL",
-        provider: "LINKEDIN_ADS",
-      },
-    });
-  }
 }
 
 main()
