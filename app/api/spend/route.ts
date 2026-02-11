@@ -24,12 +24,13 @@ export async function POST(req: NextRequest) {
 
   if (!platform) return new Response("platform not found", { status: 404 });
 
+  const parsedDate = new Date(date);
   try {
     const spend = await prisma.spendEntry.create({
       data: {
         orgId,
         platformId: platform.id,
-        date: new Date(date),
+        date: parsedDate,
         amountCents,
         createdByUserId: authz.userId,
         source: "MANUAL",
@@ -42,11 +43,28 @@ export async function POST(req: NextRequest) {
       e instanceof Prisma.PrismaClientKnownRequestError &&
       e.code === "P2002"
     ) {
+      const existing = await prisma.spendEntry.findFirst({
+        where: { orgId, platformId: platform.id, date: parsedDate },
+      });
+
+      if (existing && existing.amountCents === amountCents) {
+        return Response.json(
+          {
+            error: "DUPLICATE_SAME",
+            message: "Spend entry already exists for org + date + platform.",
+            key: { orgId, date, platformId },
+            existingAmountCents: existing.amountCents,
+          },
+          { status: 409 }
+        );
+      }
+
       return Response.json(
         {
-          error: "DUPLICATE_SPEND_ENTRY",
+          error: "DUPLICATE_DIFFERENT",
           message: "Spend entry already exists for org + date + platform.",
           key: { orgId, date, platformId },
+          existingAmountCents: existing?.amountCents ?? null,
         },
         { status: 409 }
       );
@@ -54,4 +72,23 @@ export async function POST(req: NextRequest) {
 
     throw e;
   }
+}
+
+export async function GET(req: NextRequest) {
+  const orgId = req.nextUrl.searchParams.get("orgId") ?? "";
+  const platformId = req.nextUrl.searchParams.get("platformId") ?? "";
+
+  if (!orgId) return new Response("orgId required", { status: 400 });
+  if (!platformId) return new Response("platformId required", { status: 400 });
+
+  const authz = await requireRole({ orgId, action: "SPEND_READ" });
+  if (!authz.ok) return new Response(authz.error, { status: authz.status });
+
+  const entries = await prisma.spendEntry.findMany({
+    where: { orgId, platformId },
+    orderBy: { date: "desc" },
+    take: 50,
+  });
+
+  return Response.json({ entries });
 }

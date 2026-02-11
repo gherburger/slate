@@ -12,12 +12,14 @@ type AddRecordModalProps = {
   orgId: string;
   platforms?: PlatformOption[];
   fixedPlatformId?: string | null;
+  onCreated?: () => void;
 };
 
 export default function AddRecordModal({
   orgId,
   platforms = [],
   fixedPlatformId = null,
+  onCreated,
 }: AddRecordModalProps) {
   const [open, setOpen] = useState(false);
   const [platformOpen, setPlatformOpen] = useState(false);
@@ -26,6 +28,13 @@ export default function AddRecordModal({
   const [dateValue, setDateValue] = useState("");
   const [amountValue, setAmountValue] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [overwritePrompt, setOverwritePrompt] = useState<{
+    date: string;
+    newAmountCents: number;
+    displayAmount: string;
+    existingAmountCents: number | null;
+  } | null>(null);
+  const [overwriteText, setOverwriteText] = useState("");
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(
@@ -156,6 +165,24 @@ export default function AddRecordModal({
       });
 
       if (!res.ok) {
+        if (res.status === 409) {
+          const data = await res.json();
+          if (data.error === "DUPLICATE_SAME") {
+            setError(
+              `${amountNumber} already exists for ${date}.`
+            );
+            return;
+          }
+          if (data.error === "DUPLICATE_DIFFERENT") {
+            setOverwritePrompt({
+              date,
+              newAmountCents: Math.round(amountNumber * 100),
+              displayAmount: amount,
+              existingAmountCents: data.existingAmountCents ?? null,
+            });
+            return;
+          }
+        }
         const message = await res.text();
         throw new Error(message || "Failed to create spend entry.");
       }
@@ -167,6 +194,7 @@ export default function AddRecordModal({
         setAmountValue("");
         setError(null);
       }
+      onCreated?.();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to create spend entry."
@@ -200,6 +228,50 @@ export default function AddRecordModal({
   const showAmountError =
     amountTouched && amountValue.length > 0 && !isAmountValueValid;
 
+  async function confirmOverwrite() {
+    if (!overwritePrompt || isSubmitting) return;
+    if (overwriteText.trim().toLowerCase() !== "overwrite") {
+      setError('Type "overwrite" to confirm.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/spend/overwrite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgId,
+          platformId: selectedPlatformId,
+          date: overwritePrompt.date,
+          amountCents: overwritePrompt.newAmountCents,
+          confirm: "overwrite",
+        }),
+      });
+
+      if (!res.ok) {
+        const message = await res.text();
+        if (message === "DUPLICATE_SAME") {
+          setError(
+            `${overwritePrompt.displayAmount} already exists for ${overwritePrompt.date}.`
+          );
+          return;
+        }
+        throw new Error(message || "Failed to overwrite.");
+      }
+
+      setOverwritePrompt(null);
+      setOverwriteText("");
+      setOpen(false);
+      onCreated?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to overwrite.");
+    } finally {
+      setTimeout(() => setIsSubmitting(false), 800);
+    }
+  }
+
   return (
     <>
       <button className="primary-pill" onClick={() => setOpen(true)}>
@@ -226,93 +298,134 @@ export default function AddRecordModal({
               >
                 ×
               </button>
-              <div className="modal-header">
-                <h2>Add record</h2>
-                <p>
-                  Entering many records? <span>Use bulk entry →</span>
-                </p>
-              </div>
-              <div className="modal-grid">
-                <label className="field">
-                  <span>Date</span>
-                  <input
-                    type="text"
-                    placeholder="04/24/2024"
-                    value={dateValue}
-                    onChange={(event) => {
-                      setDateValue(formatDateInput(event.target.value));
-                      if (!dateTouched) setDateTouched(true);
-                    }}
-                    className={showDateError ? "input-error" : undefined}
-                    inputMode="numeric"
-                  />
-                </label>
-                <label className="field">
-                  <span>Spend</span>
-                  <div className="currency-input">
-                    <span className="currency-symbol">$</span>
-                    <input
-                      type="text"
-                      placeholder="0.00"
-                    value={amountValue}
-                      onChange={(event) => {
-                        setAmountValue(formatAmountInput(event.target.value));
-                        if (!amountTouched) setAmountTouched(true);
-                      }}
-                      className={showAmountError ? "input-error" : undefined}
-                      inputMode="decimal"
-                    />
+              {overwritePrompt ? (
+                <>
+                  <div className="modal-header">
+                    <h2>Overwrite Data?</h2>
+                    <p>
+                      Value {overwritePrompt.displayAmount} already exists for{" "}
+                      {overwritePrompt.date}. Are you sure you want to
+                      continue?
+                    </p>
+                    {overwritePrompt.existingAmountCents !== null && (
+                      <p>
+                        Previous value: $
+                        {(overwritePrompt.existingAmountCents / 100).toFixed(2)}
+                      </p>
+                    )}
                   </div>
-                </label>
-                {showPlatformSelector && (
-                  <div className="field full" ref={dropdownRef}>
-                    <span>Platform</span>
+                  <div className="modal-grid">
+                    <label className="field full">
+                      <span>Type “overwrite” to confirm this change</span>
+                      <input
+                        type="text"
+                        value={overwriteText}
+                        onChange={(event) => setOverwriteText(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  {error && <div className="field-error">{error}</div>}
+                  <div className="modal-actions">
                     <button
-                      type="button"
-                      className={`platform-trigger ${
-                        platformOpen ? "is-open" : ""
-                      }`}
-                      onClick={() => setPlatformOpen((prev) => !prev)}
+                      className="btn-primary"
+                      disabled={isSubmitting}
+                      onClick={confirmOverwrite}
                     >
-                      {selectedPlatform?.name ?? "Select platform"}
-                      <span className="caret">▾</span>
+                      Confirm
                     </button>
-                    {platformOpen && (
-                      <div className="platform-menu">
-                        {platforms.map((option) => (
-                          <button
-                            key={option.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedPlatformId(option.id);
-                              setPlatformOpen(false);
-                            }}
-                          >
-                            {option.name}
-                          </button>
-                        ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="modal-header">
+                    <h2>Add record</h2>
+                    <p>
+                      Entering many records? <span>Use bulk entry →</span>
+                    </p>
+                  </div>
+                  <div className="modal-grid">
+                    <label className="field">
+                      <span>Date</span>
+                      <input
+                        type="text"
+                        placeholder="04/24/2024"
+                        value={dateValue}
+                        onChange={(event) => {
+                          setDateValue(formatDateInput(event.target.value));
+                          if (!dateTouched) setDateTouched(true);
+                        }}
+                        className={showDateError ? "input-error" : undefined}
+                        inputMode="numeric"
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Spend</span>
+                      <div className="currency-input">
+                        <span className="currency-symbol">$</span>
+                        <input
+                          type="text"
+                          placeholder="0.00"
+                          value={amountValue}
+                          onChange={(event) => {
+                            setAmountValue(formatAmountInput(event.target.value));
+                            if (!amountTouched) setAmountTouched(true);
+                          }}
+                          className={showAmountError ? "input-error" : undefined}
+                          inputMode="decimal"
+                        />
+                      </div>
+                    </label>
+                    {showPlatformSelector && (
+                      <div className="field full" ref={dropdownRef}>
+                        <span>Platform</span>
+                        <button
+                          type="button"
+                          className={`platform-trigger ${
+                            platformOpen ? "is-open" : ""
+                          }`}
+                          onClick={() => setPlatformOpen((prev) => !prev)}
+                        >
+                          {selectedPlatform?.name ?? "Select platform"}
+                          <span className="caret">▾</span>
+                        </button>
+                        {platformOpen && (
+                          <div className="platform-menu">
+                            {platforms.map((option) => (
+                              <button
+                                key={option.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedPlatformId(option.id);
+                                  setPlatformOpen(false);
+                                }}
+                              >
+                                {option.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-              {error && <div className="field-error">{error}</div>}
-            <div className="modal-actions">
-              <button
-                className="btn-secondary"
-                disabled={isSubmitting}
-                onClick={() => submitRecord(false)}
-              >
-                Save & add another
-              </button>
-              <button
-                className="btn-primary"
-                disabled={isSubmitting}
-                onClick={() => submitRecord(true)}
-              >
-                Save record <span className="arrow">→</span>
-              </button>
-            </div>
+                  {error && <div className="field-error">{error}</div>}
+                  <div className="modal-actions">
+                    <button
+                      className="btn-secondary"
+                      disabled={isSubmitting}
+                      onClick={() => submitRecord(false)}
+                    >
+                      Save & add another
+                    </button>
+                    <button
+                      className="btn-primary"
+                      disabled={isSubmitting}
+                      onClick={() => submitRecord(true)}
+                    >
+                      Save record <span className="arrow">→</span>
+                    </button>
+                  </div>
+                </>
+              )}
           </div>
         </div>,
         document.body
