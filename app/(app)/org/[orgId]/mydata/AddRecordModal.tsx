@@ -13,6 +13,9 @@ type AddRecordModalProps = {
   platforms?: PlatformOption[];
   fixedPlatformId?: string | null;
   onCreated?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  disabled?: boolean;
 };
 
 export default function AddRecordModal({
@@ -20,8 +23,18 @@ export default function AddRecordModal({
   platforms = [],
   fixedPlatformId = null,
   onCreated,
+  open: controlledOpen,
+  onOpenChange,
+  disabled = false,
 }: AddRecordModalProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (value: boolean) => {
+    if (onOpenChange) onOpenChange(value);
+    if (controlledOpen === undefined) {
+      setUncontrolledOpen(value);
+    }
+  };
   const [platformOpen, setPlatformOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -274,7 +287,11 @@ export default function AddRecordModal({
 
   return (
     <>
-      <button className="primary-pill" onClick={() => setOpen(true)}>
+      <button
+        className="primary-pill"
+        onClick={() => setOpen(true)}
+        disabled={disabled}
+      >
         + Add record
       </button>
       {open &&

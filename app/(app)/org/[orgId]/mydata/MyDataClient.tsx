@@ -56,6 +56,7 @@ export default function MyDataClient({
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const columnsRef = useRef<HTMLDivElement | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(
     {
@@ -243,18 +244,21 @@ export default function MyDataClient({
         </div>
       </aside>
       <div className="tables-main">
-        <div className="tables-toolbar">
+        <div className={`tables-toolbar ${entries.length === 0 ? "is-disabled" : ""}`}>
           <div className="toolbar-group">
-            <button className="ghost-pill">Filters</button>
+            <button className="ghost-pill" disabled={entries.length === 0}>
+              Filters
+            </button>
             <div className="toolbar-menu" ref={columnsRef}>
               <button
                 className="ghost-pill columns-trigger"
                 onClick={() => setColumnsOpen((prev) => !prev)}
+                disabled={entries.length === 0}
               >
                 Columns{" "}
                 {columnsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </button>
-              {columnsOpen && (
+              {columnsOpen && entries.length > 0 && (
                 <div className="menu-dropdown columns-dropdown">
                   {columnLabels.map((col) => {
                     const isVisible = visibleColumns[col.key];
@@ -291,52 +295,63 @@ export default function MyDataClient({
               orgId={orgId}
               fixedPlatformId={selectedPlatformId}
               onCreated={() => setRefreshKey((prev) => prev + 1)}
+              open={addOpen}
+              onOpenChange={setAddOpen}
+              disabled={false}
             />
           </div>
           <div className="toolbar-group is-right">
             <span className="toolbar-meta">
               {loading ? "Loading..." : `${entries.length} rows`}
             </span>
-            <button className="ghost-pill download-button" onClick={downloadCsv}>
+            <button
+              className="ghost-pill download-button"
+              onClick={downloadCsv}
+              disabled={entries.length === 0}
+            >
               Download <Download size={14} />
             </button>
-            <button className="ghost-pill sheets-button">
+            <button className="ghost-pill sheets-button" disabled={entries.length === 0}>
               Open in Sheets <ExternalLink size={14} />
             </button>
             <div className="toolbar-menu" ref={menuRef}>
               <button
                 className="ghost-pill menu-button"
                 onClick={() => setMenuOpen((prev) => !prev)}
+                disabled={entries.length === 0}
               >
                 ⋯
               </button>
-              {menuOpen && (
+              {menuOpen && entries.length > 0 && (
                 <div className="menu-dropdown">
                   <button type="button">Share</button>
                   <button type="button">Bulk Entry</button>
                   <button type="button">Upload CSV</button>
+                  <button type="button">Rename Data Set</button>
                 </div>
               )}
             </div>
           </div>
         </div>
         <div className="tables-card">
-          <table className="data-table">
-            <thead>
-              <tr>
-                {visibleColumns.id && <th>id</th>}
-                {visibleColumns.orgId && <th>orgId</th>}
-                {visibleColumns.platformId && <th>platformId</th>}
-                {visibleColumns.Date && <th>Date</th>}
-                {visibleColumns.Spend && <th>Spend</th>}
-                {visibleColumns.currency && <th>currency</th>}
-                {visibleColumns.source && <th>source</th>}
-                {visibleColumns.notes && <th>notes</th>}
-                {visibleColumns.createdByUserId && <th>createdByUserId</th>}
-                {visibleColumns.Created && <th>Created</th>}
-                {visibleColumns.Updated && <th>Updated</th>}
-              </tr>
-            </thead>
+          <table className={`data-table ${entries.length === 0 ? "is-empty" : ""}`}>
+            {entries.length > 0 && (
+              <thead>
+                <tr>
+                  {visibleColumns.id && <th>id</th>}
+                  {visibleColumns.orgId && <th>orgId</th>}
+                  {visibleColumns.platformId && <th>platformId</th>}
+                  {visibleColumns.Date && <th>Date</th>}
+                  {visibleColumns.Spend && <th>Spend</th>}
+                  {visibleColumns.currency && <th>currency</th>}
+                  {visibleColumns.source && <th>source</th>}
+                  {visibleColumns.notes && <th>notes</th>}
+                  {visibleColumns.createdByUserId && <th>createdByUserId</th>}
+                  {visibleColumns.Created && <th>Created</th>}
+                  {visibleColumns.Updated && <th>Updated</th>}
+                </tr>
+              </thead>
+            )}
             <tbody>
               {entries.map((entry) => (
                 <tr key={entry.id}>
@@ -396,7 +411,15 @@ export default function MyDataClient({
               {!loading && entries.length === 0 && (
                 <tr>
                   <td colSpan={11} className="empty-row">
-                    No data yet. Choose Add Record to get started.
+                    No data yet.{" "}
+                    <button
+                      type="button"
+                      className="link-button inline-link"
+                      onClick={() => setAddOpen(true)}
+                    >
+                      Add a record
+                    </button>{" "}
+                    to get started.
                   </td>
                 </tr>
               )}
