@@ -87,6 +87,48 @@ function isHeaderRow(fields: string[]) {
   return first === "date" && second === "spend";
 }
 
+export function parseBulkRow(
+  rowNumber: number,
+  rawDateInput: string,
+  rawSpendInput: string,
+): ParsedBulkRow {
+  const rawDate = rawDateInput.trim();
+  const rawSpend = rawSpendInput.trim();
+
+  const dateResult = normalizeDateValue(rawDate);
+  if (!dateResult.ok) {
+    return {
+      rowNumber,
+      rawDate,
+      rawSpend,
+      date: null,
+      amountCents: null,
+      error: dateResult.error,
+    };
+  }
+
+  const amountResult = parseAmountCents(rawSpend);
+  if (!amountResult.ok) {
+    return {
+      rowNumber,
+      rawDate,
+      rawSpend,
+      date: dateResult.value,
+      amountCents: null,
+      error: amountResult.error,
+    };
+  }
+
+  return {
+    rowNumber,
+    rawDate,
+    rawSpend,
+    date: dateResult.value,
+    amountCents: amountResult.value,
+    error: null,
+  };
+}
+
 export function parseBulkPaste(raw: string) {
   const lines = raw
     .replace(/\r\n/g, "\n")
@@ -122,39 +164,7 @@ export function parseBulkPaste(raw: string) {
 
     const rawDate = fields[0] ?? "";
     const rawSpend = fields[1] ?? "";
-
-    const dateResult = normalizeDateValue(rawDate);
-    if (!dateResult.ok) {
-      return {
-        rowNumber,
-        rawDate,
-        rawSpend,
-        date: null,
-        amountCents: null,
-        error: dateResult.error,
-      };
-    }
-
-    const amountResult = parseAmountCents(rawSpend);
-    if (!amountResult.ok) {
-      return {
-        rowNumber,
-        rawDate,
-        rawSpend,
-        date: dateResult.value,
-        amountCents: null,
-        error: amountResult.error,
-      };
-    }
-
-    return {
-      rowNumber,
-      rawDate,
-      rawSpend,
-      date: dateResult.value,
-      amountCents: amountResult.value,
-      error: null,
-    };
+    return parseBulkRow(rowNumber, rawDate, rawSpend);
   });
 
   return { rows };

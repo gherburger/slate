@@ -63,6 +63,7 @@ export default function MyDataClient({
   const columnsRef = useRef<HTMLDivElement | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkInitialStep, setBulkInitialStep] = useState<"paste" | "upload">("paste");
   const [isExportingSheets, setIsExportingSheets] = useState(false);
 
   const internalOnlyColumns = useMemo(
@@ -384,13 +385,21 @@ export default function MyDataClient({
               orgId={orgId}
               fixedPlatformId={selectedPlatformId}
               onCreated={() => setRefreshKey((prev) => prev + 1)}
+              onUseBulkEntry={() => {
+                setAddOpen(false);
+                setBulkInitialStep("paste");
+                setBulkOpen(true);
+              }}
               open={addOpen}
               onOpenChange={setAddOpen}
               disabled={false}
             />
             <button
               className="primary-pill"
-              onClick={() => setBulkOpen(true)}
+              onClick={() => {
+                setBulkInitialStep("paste");
+                setBulkOpen(true);
+              }}
               disabled={!selectedPlatformId}
             >
               Bulk Entry
@@ -399,6 +408,7 @@ export default function MyDataClient({
               orgId={orgId}
               platformId={selectedPlatformId}
               open={bulkOpen}
+              initialStep={bulkInitialStep}
               onOpenChange={setBulkOpen}
               onCreated={() => setRefreshKey((prev) => prev + 1)}
             />
@@ -447,12 +457,22 @@ export default function MyDataClient({
                     type="button"
                     onClick={() => {
                       setMenuOpen(false);
+                      setBulkInitialStep("paste");
                       setBulkOpen(true);
                     }}
                   >
                     Bulk Entry
                   </button>
-                  <button type="button">Upload CSV</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setBulkInitialStep("upload");
+                      setBulkOpen(true);
+                    }}
+                  >
+                    Upload CSV
+                  </button>
                   <button type="button">Rename Data Set</button>
                 </div>
               )}

@@ -24,6 +24,7 @@ enum SpendSource {
   MANUAL
   BULK_PASTE
   BULK_IMPORT
+  UPLOAD
 }
 
 enum AuditAction {

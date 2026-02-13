@@ -15,6 +15,7 @@ type AddRecordModalProps = {
   platforms?: PlatformOption[];
   fixedPlatformId?: string | null;
   onCreated?: () => void;
+  onUseBulkEntry?: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
@@ -25,6 +26,7 @@ export default function AddRecordModal({
   platforms = [],
   fixedPlatformId = null,
   onCreated,
+  onUseBulkEntry,
   open: controlledOpen,
   onOpenChange,
   disabled = false,
@@ -419,7 +421,23 @@ export default function AddRecordModal({
                   <div className="modal-header">
                     <h2>Add record</h2>
                     <p>
-                      Entering many records? <span>Use bulk entry →</span>
+                      Entering many records?{" "}
+                      {onUseBulkEntry ? (
+                        <button
+                          type="button"
+                          className="modal-inline-link"
+                          onClick={() => {
+                            handleClose();
+                            onUseBulkEntry();
+                          }}
+                        >
+                          Use bulk entry →
+                        </button>
+                      ) : (
+                        <span className="modal-inline-link modal-inline-link-static">
+                          Use bulk entry →
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="modal-grid">
