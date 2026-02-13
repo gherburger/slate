@@ -38,10 +38,12 @@ export default function MyDataClient({
   orgId,
   customPlatforms,
   integrationPlatforms,
+  isInternal,
 }: {
   orgId: string;
   customPlatforms: PlatformItem[];
   integrationPlatforms: PlatformItem[];
+  isInternal: boolean;
 }) {
   const searchParams = useSearchParams();
   const queryPlatformId = searchParams.get("platformId");
@@ -57,21 +59,53 @@ export default function MyDataClient({
   const [columnsOpen, setColumnsOpen] = useState(false);
   const columnsRef = useRef<HTMLDivElement | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [isExportingSheets, setIsExportingSheets] = useState(false);
+
+  const internalOnlyColumns = useMemo(
+    () =>
+      new Set([
+        "id",
+        "orgId",
+        "source",
+        "createdByUserId",
+        "Created",
+        "Updated",
+        "platformId",
+      ]),
+    []
+  );
+
+  const allColumnLabels = useMemo(
+    () => [
+      { key: "id", label: "id" },
+      { key: "orgId", label: "orgId" },
+      { key: "platformId", label: "platformId" },
+      { key: "Date", label: "Date" },
+      { key: "Spend", label: "Spend" },
+      { key: "currency", label: "currency" },
+      { key: "source", label: "source" },
+      { key: "notes", label: "notes" },
+      { key: "createdByUserId", label: "createdByUserId" },
+      { key: "Created", label: "Created" },
+      { key: "Updated", label: "Updated" },
+    ],
+    []
+  );
+
+  const columnLabels = useMemo(
+    () =>
+      isInternal
+        ? allColumnLabels
+        : allColumnLabels.filter((col) => !internalOnlyColumns.has(col.key)),
+    [allColumnLabels, internalOnlyColumns, isInternal]
+  );
 
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(
-    {
-      id: true,
-      orgId: true,
-      platformId: true,
-      Date: true,
-      Spend: true,
-      currency: true,
-      source: true,
-      notes: true,
-      createdByUserId: true,
-      Created: true,
-      Updated: true,
-    }
+    () =>
+      allColumnLabels.reduce<Record<string, boolean>>((acc, col) => {
+        acc[col.key] = isInternal || !internalOnlyColumns.has(col.key);
+        return acc;
+      }, {})
   );
 
   const allPlatforms = useMemo(
@@ -81,48 +115,53 @@ export default function MyDataClient({
 
   function downloadCsv() {
     if (!selectedPlatformId) return;
-    const headers = [
-      "id",
-      "orgId",
-      "platformId",
-      "Date",
-      "Spend",
-      "currency",
-      "source",
-      "notes",
-      "createdByUserId",
-      "Created",
-      "Updated",
-    ];
-    const rows = entries.map((entry) => [
-      entry.id,
-      entry.orgId,
-      entry.platformId,
-      new Date(entry.date).toLocaleDateString("en-US", {
-        month: "2-digit",
-        day: "2-digit",
-        year: "numeric",
-      }),
-      new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 2,
-      }).format(entry.amountCents / 100),
-      entry.currency,
-      entry.source,
-      entry.notes ?? "",
-      entry.createdByUserId ?? "",
-      new Date(entry.createdAt).toLocaleDateString("en-US", {
-        month: "2-digit",
-        day: "2-digit",
-        year: "numeric",
-      }),
-      new Date(entry.updatedAt).toLocaleDateString("en-US", {
-        month: "2-digit",
-        day: "2-digit",
-        year: "numeric",
-      }),
-    ]);
+    const headers = visibleHeaderKeys.map((col) => col.label);
+    const rows = entries.map((entry) =>
+      visibleHeaderKeys.map((col) => {
+        switch (col.key) {
+          case "id":
+            return entry.id;
+          case "orgId":
+            return entry.orgId;
+          case "platformId":
+            return entry.platformId;
+          case "Date":
+            return new Date(entry.date).toLocaleDateString("en-US", {
+              month: "2-digit",
+              day: "2-digit",
+              year: "numeric",
+            });
+          case "Spend":
+            return new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: "USD",
+              minimumFractionDigits: 2,
+            }).format(entry.amountCents / 100);
+          case "currency":
+            return entry.currency;
+          case "source":
+            return entry.source;
+          case "notes":
+            return entry.notes ?? "";
+          case "createdByUserId":
+            return entry.createdByUserId ?? "";
+          case "Created":
+            return new Date(entry.createdAt).toLocaleDateString("en-US", {
+              month: "2-digit",
+              day: "2-digit",
+              year: "numeric",
+            });
+          case "Updated":
+            return new Date(entry.updatedAt).toLocaleDateString("en-US", {
+              month: "2-digit",
+              day: "2-digit",
+              year: "numeric",
+            });
+          default:
+            return "";
+        }
+      })
+    );
     const escapeCell = (value: string | number) => {
       const text = String(value ?? "");
       if (text.includes('"') || text.includes(",") || text.includes("\n")) {
@@ -142,6 +181,50 @@ export default function MyDataClient({
     link.download = `${selectedName}-data.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function exportToSheets() {
+    if (!selectedPlatformId) return;
+    setIsExportingSheets(true);
+
+    try {
+      const response = await fetch("/api/integrations/google-sheets/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgId,
+          platformId: selectedPlatformId,
+          visibleColumnKeys: visibleHeaderKeys.map((column) => column.key),
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (
+          response.status === 409 &&
+          (payload?.error === "GOOGLE_SHEETS_NOT_CONNECTED" ||
+            payload?.error === "GOOGLE_SHEETS_RECONNECT_REQUIRED")
+        ) {
+          window.location.assign(
+            `/org/${orgId}/integrations?connect=google_sheets&from=mydata`,
+          );
+          return;
+        }
+
+        throw new Error(payload?.error ?? "Failed to export to Google Sheets");
+      }
+
+      if (payload?.spreadsheetUrl) {
+        const tab = window.open(payload.spreadsheetUrl, "_blank", "noopener,noreferrer");
+        if (!tab) {
+          window.location.assign(payload.spreadsheetUrl);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsExportingSheets(false);
+    }
   }
 
   useEffect(() => {
@@ -202,19 +285,10 @@ export default function MyDataClient({
 
   const baseHref = `/org/${orgId}/mydata`;
 
-  const columnLabels = [
-    { key: "id", label: "id" },
-    { key: "orgId", label: "orgId" },
-    { key: "platformId", label: "platformId" },
-    { key: "Date", label: "Date" },
-    { key: "Spend", label: "Spend" },
-    { key: "currency", label: "currency" },
-    { key: "source", label: "source" },
-    { key: "notes", label: "notes" },
-    { key: "createdByUserId", label: "createdByUserId" },
-    { key: "Created", label: "Created" },
-    { key: "Updated", label: "Updated" },
-  ];
+  const visibleHeaderKeys = useMemo(
+    () => columnLabels.filter((col) => visibleColumns[col.key]),
+    [columnLabels, visibleColumns]
+  );
 
   return (
     <>
@@ -225,7 +299,11 @@ export default function MyDataClient({
         <div className="tables-group">
           <p className="sidebar-title">Custom</p>
           <div className="tables-list">
-            <PlatformMenu platforms={customPlatforms} baseHref={baseHref} />
+            <PlatformMenu
+              platforms={customPlatforms}
+              baseHref={baseHref}
+              orgId={orgId}
+            />
             <AddDataSetModal orgId={orgId}>
               <CirclePlus size={16} aria-hidden="true" />
               Add New Data Set
@@ -235,7 +313,11 @@ export default function MyDataClient({
         <div className="tables-group">
           <p className="sidebar-title">Integrations</p>
           <div className="tables-list">
-            <PlatformMenu platforms={integrationPlatforms} baseHref={baseHref} />
+            <PlatformMenu
+              platforms={integrationPlatforms}
+              baseHref={baseHref}
+              orgId={orgId}
+            />
             <div className="tables-item tables-item-add">
               <CirclePlus size={16} aria-hidden="true" />
               Add New App
@@ -272,9 +354,9 @@ export default function MyDataClient({
                         }`}
                         onClick={() => {
                           if (isVisible) {
-                            const visibleCount = Object.values(
-                              visibleColumns
-                            ).filter(Boolean).length;
+                            const visibleCount = columnLabels.filter(
+                              (colItem) => visibleColumns[colItem.key]
+                            ).length;
                             if (visibleCount <= 1) return;
                           }
                           setVisibleColumns((prev) => ({
@@ -305,14 +387,19 @@ export default function MyDataClient({
               {loading ? "Loading..." : `${entries.length} rows`}
             </span>
             <button
-              className="ghost-pill download-button"
+              className="ghost-pill toolbar-action-btn download-button"
               onClick={downloadCsv}
               disabled={entries.length === 0}
             >
               Download <Download size={14} />
             </button>
-            <button className="ghost-pill sheets-button" disabled={entries.length === 0}>
-              Open in Sheets <ExternalLink size={14} />
+            <button
+              className="ghost-pill toolbar-action-btn sheets-button"
+              disabled={entries.length === 0 || isExportingSheets}
+              onClick={exportToSheets}
+            >
+              {isExportingSheets ? "Exporting..." : "Export to Sheets"}{" "}
+              <ExternalLink size={14} />
             </button>
             <div className="toolbar-menu" ref={menuRef}>
               <button
@@ -410,7 +497,7 @@ export default function MyDataClient({
               ))}
               {!loading && entries.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="empty-row">
+                  <td colSpan={visibleHeaderKeys.length} className="empty-row">
                     No data yet.{" "}
                     <button
                       type="button"

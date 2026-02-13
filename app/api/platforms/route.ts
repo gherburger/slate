@@ -93,3 +93,50 @@ export async function GET(req: NextRequest) {
 
   return Response.json(platforms);
 }
+
+/**
+ * PATCH /api/platforms
+ * Body: { id: string, orgId: string, name: string }
+ * Renames platform (name only).
+ */
+export async function PATCH(req: NextRequest) {
+  const { userId } = getAuth(req);
+  if (!userId) return new Response("Unauthorized", { status: 401 });
+
+  const { id, orgId, name } = await req.json();
+  if (!id || !orgId || !name) {
+    return new Response("id, orgId, and name required", { status: 400 });
+  }
+
+  const trimmedName = String(name).trim();
+  const validName = /^[a-zA-Z0-9 _\-()]+$/.test(trimmedName);
+  if (!validName) {
+    return new Response("Invalid name format", { status: 400 });
+  }
+
+  const membership = await prisma.membership.findUnique({
+    where: { orgId_userId: { orgId, userId } },
+  });
+
+  if (!membership || membership.role === "VIEWER") {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  let platform;
+  try {
+    platform = await prisma.platform.update({
+      where: { id },
+      data: { name: trimmedName },
+    });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return new Response("ALREADY_EXISTS", { status: 409 });
+    }
+    throw err;
+  }
+
+  return Response.json(platform);
+}

@@ -15,6 +15,11 @@ enum Role {
   VIEWER
 }
 
+enum UserType {
+  EXTERNAL
+  INTERNAL
+}
+
 enum SpendSource {
   MANUAL
   BULK_PASTE
@@ -29,6 +34,7 @@ enum AuditAction {
 enum IntegrationProvider {
   META
   GOOGLE_ADS
+  GOOGLE_SHEETS
   LINKEDIN_ADS
   TIKTOK_ADS
   AMAZON_ADS
@@ -45,12 +51,14 @@ model User {
   email     String   @unique
   name      String?
   avatarUrl String?
+  userType  UserType @default(EXTERNAL)
   createdAt DateTime @default(now())
 
   memberships         Membership[]
   createdSpendEntries SpendEntry[] @relation("UserCreatedSpendEntries")
   spendAudits         SpendAudit[] @relation("UserSpendAudits")
   editLogs            EditLog[]
+  integrationConnections IntegrationConnection[]
 }
 
 model Org {
@@ -130,6 +138,7 @@ model SpendEntry {
 model IntegrationConnection {
   id       String              @id @default(cuid())
   orgId    String
+  userId   String
   provider IntegrationProvider
   status   IntegrationStatus   @default(ACTIVE)
 
@@ -145,10 +154,11 @@ model IntegrationConnection {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  org Org @relation(fields: [orgId], references: [id])
+  org  Org  @relation(fields: [orgId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
-  @@unique([orgId, provider])
-  @@index([orgId, provider])
+  @@unique([orgId, userId, provider])
+  @@index([orgId, userId, provider])
   @@index([status])
 }
 

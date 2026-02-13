@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 type PlatformOption = {
   id: string;
@@ -38,6 +40,30 @@ export default function AddRecordModal({
   const [platformOpen, setPlatformOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const resetState = () => {
+    setPlatformOpen(false);
+    setDateValue("");
+    setAmountValue("");
+    setDateTouched(false);
+    setAmountTouched(false);
+    setError(null);
+    setOverwritePrompt(null);
+    setOverwriteText("");
+  };
+  const handleClose = () => {
+    setOpen(false);
+    resetState();
+  };
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (overwritePrompt) {
+      confirmOverwrite();
+    } else {
+      submitRecord(true);
+    }
+  };
   const [dateValue, setDateValue] = useState("");
   const [amountValue, setAmountValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -92,12 +118,22 @@ export default function AddRecordModal({
 
   function formatDateInput(value: string) {
     const raw = value.replace(/[^0-9/]/g, "");
-    let digits = raw.replace(/\D/g, "");
+    const endsWithSlash = raw.endsWith("/");
+    const parts = raw.split("/");
+    let mmPart = (parts[0] ?? "").replace(/\D/g, "");
+    let ddPart = (parts[1] ?? "").replace(/\D/g, "");
+    let yyyyPart = (parts[2] ?? "").replace(/\D/g, "");
 
-    if (raw.includes("/") && digits.length === 1) {
-      digits = `0${digits}`;
+    if (endsWithSlash) {
+      if (mmPart.length === 1 && parts.length >= 2 && ddPart.length === 0) {
+        mmPart = `0${mmPart}`;
+      }
+      if (parts.length >= 2 && ddPart.length === 1) {
+        ddPart = `0${ddPart}`;
+      }
     }
 
+    let digits = `${mmPart}${ddPart}${yyyyPart}`;
     if (digits.length > 8) digits = digits.slice(0, 8);
 
     const mm = digits.slice(0, 2);
@@ -151,6 +187,15 @@ export default function AddRecordModal({
       return;
     }
 
+    const entryDate = new Date(yyyy, mm - 1, dd);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    entryDate.setHours(0, 0, 0, 0);
+    if (entryDate > today) {
+      setError("That date hasn't happened yet! Do you want to forecast future spend?");
+      return;
+    }
+
     if (!/^[0-9.,]+$/.test(amount)) {
       setError("Enter a valid amount.");
       return;
@@ -187,11 +232,26 @@ export default function AddRecordModal({
             return;
           }
           if (data.error === "DUPLICATE_DIFFERENT") {
+            const existingAmountCents =
+              typeof data.existingAmountCents === "number"
+                ? data.existingAmountCents
+                : null;
             setOverwritePrompt({
               date,
               newAmountCents: Math.round(amountNumber * 100),
-              displayAmount: amount,
-              existingAmountCents: data.existingAmountCents ?? null,
+              displayAmount:
+                existingAmountCents === null
+                  ? new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                      minimumFractionDigits: 2,
+                    }).format(amountNumber)
+                  : new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                      minimumFractionDigits: 2,
+                    }).format(existingAmountCents / 100),
+              existingAmountCents,
             });
             return;
           }
@@ -202,6 +262,7 @@ export default function AddRecordModal({
 
       if (closeOnSuccess) {
         setOpen(false);
+        resetState();
       } else {
         setDateValue("");
         setAmountValue("");
@@ -297,23 +358,21 @@ export default function AddRecordModal({
       {open &&
         mounted &&
         createPortal(
-          <div
-            className="modal-overlay"
-            onClick={() => setOpen(false)}
-            role="presentation"
-          >
+          <div className="modal-overlay" onClick={handleClose} role="presentation">
             <div
               className="modal-card"
               onClick={(event) => event.stopPropagation()}
+              onKeyDown={handleKeyDown}
+              tabIndex={-1}
               role="dialog"
               aria-modal="true"
             >
               <button
                 className="modal-close"
                 aria-label="Close"
-                onClick={() => setOpen(false)}
+                onClick={handleClose}
               >
-                ×
+                <X size={20} />
               </button>
               {overwritePrompt ? (
                 <>
@@ -324,12 +383,6 @@ export default function AddRecordModal({
                       {overwritePrompt.date}. Are you sure you want to
                       continue?
                     </p>
-                    {overwritePrompt.existingAmountCents !== null && (
-                      <p>
-                        Previous value: $
-                        {(overwritePrompt.existingAmountCents / 100).toFixed(2)}
-                      </p>
-                    )}
                   </div>
                   <div className="modal-grid">
                     <label className="field full">

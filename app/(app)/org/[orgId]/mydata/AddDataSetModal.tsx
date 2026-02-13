@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { X } from "lucide-react";
 
 type AddDataSetModalProps = {
   orgId: string;
@@ -25,6 +27,11 @@ export default function AddDataSetModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    handleSubmit();
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -115,6 +122,8 @@ export default function AddDataSetModal({
             <div
               className="modal-card"
               onClick={(event) => event.stopPropagation()}
+              onKeyDown={handleKeyDown}
+              tabIndex={-1}
               role="dialog"
               aria-modal="true"
             >
@@ -123,7 +132,7 @@ export default function AddDataSetModal({
                 aria-label="Close"
                 onClick={() => setOpen(false)}
               >
-                ×
+                <X size={20} />
               </button>
               <div className="modal-header">
                 <h2>Add New Data Set</h2>
