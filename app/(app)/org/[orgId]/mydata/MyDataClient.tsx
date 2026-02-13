@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AddRecordModal from "@/app/(app)/org/[orgId]/mydata/AddRecordModal";
+import BulkEntryModal from "@/app/(app)/org/[orgId]/mydata/BulkEntryModal";
 import AddDataSetModal from "@/app/(app)/org/[orgId]/mydata/AddDataSetModal";
 import PlatformMenu from "@/app/(app)/org/[orgId]/mydata/PlatformMenu";
 import {
   CirclePlus,
   Download,
   ExternalLink,
+  MoreHorizontal,
   Eye,
   EyeOff,
   ChevronDown,
@@ -59,6 +62,7 @@ export default function MyDataClient({
   const [columnsOpen, setColumnsOpen] = useState(false);
   const columnsRef = useRef<HTMLDivElement | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [isExportingSheets, setIsExportingSheets] = useState(false);
 
   const internalOnlyColumns = useMemo(
@@ -318,10 +322,13 @@ export default function MyDataClient({
               baseHref={baseHref}
               orgId={orgId}
             />
-            <div className="tables-item tables-item-add">
+            <Link
+              href={`/org/${orgId}/integrations`}
+              className="tables-item tables-item-add"
+            >
               <CirclePlus size={16} aria-hidden="true" />
               Add New App
-            </div>
+            </Link>
           </div>
         </div>
       </aside>
@@ -381,6 +388,20 @@ export default function MyDataClient({
               onOpenChange={setAddOpen}
               disabled={false}
             />
+            <button
+              className="primary-pill"
+              onClick={() => setBulkOpen(true)}
+              disabled={!selectedPlatformId}
+            >
+              Bulk Entry
+            </button>
+            <BulkEntryModal
+              orgId={orgId}
+              platformId={selectedPlatformId}
+              open={bulkOpen}
+              onOpenChange={setBulkOpen}
+              onCreated={() => setRefreshKey((prev) => prev + 1)}
+            />
           </div>
           <div className="toolbar-group is-right">
             <span className="toolbar-meta">
@@ -403,16 +424,34 @@ export default function MyDataClient({
             </button>
             <div className="toolbar-menu" ref={menuRef}>
               <button
-                className="ghost-pill menu-button"
+                className="ghost-pill toolbar-action-btn menu-button"
                 onClick={() => setMenuOpen((prev) => !prev)}
                 disabled={entries.length === 0}
+                aria-label="More options"
               >
-                ⋯
+                <MoreHorizontal size={18} strokeWidth={2.2} aria-hidden />
               </button>
               {menuOpen && entries.length > 0 && (
                 <div className="menu-dropdown">
                   <button type="button">Share</button>
-                  <button type="button">Bulk Entry</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setAddOpen(true);
+                    }}
+                  >
+                    Add Record
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setBulkOpen(true);
+                    }}
+                  >
+                    Bulk Entry
+                  </button>
                   <button type="button">Upload CSV</button>
                   <button type="button">Rename Data Set</button>
                 </div>

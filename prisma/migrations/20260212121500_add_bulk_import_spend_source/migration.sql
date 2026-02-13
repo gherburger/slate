@@ -1,0 +1,1 @@
+ALTER TYPE "SpendSource" ADD VALUE 'BULK_IMPORT';

@@ -75,6 +75,7 @@ export default function AddRecordModal({
   } | null>(null);
   const [overwriteText, setOverwriteText] = useState("");
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(
     fixedPlatformId ?? platforms[0]?.id ?? null
@@ -116,13 +117,21 @@ export default function AddRecordModal({
     };
   }, [open, mounted]);
 
+  useEffect(() => {
+    if (!open || !mounted || overwritePrompt) return;
+    const handle = window.requestAnimationFrame(() => {
+      dateInputRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [open, mounted, overwritePrompt]);
+
   function formatDateInput(value: string) {
     const raw = value.replace(/[^0-9/]/g, "");
     const endsWithSlash = raw.endsWith("/");
     const parts = raw.split("/");
     let mmPart = (parts[0] ?? "").replace(/\D/g, "");
     let ddPart = (parts[1] ?? "").replace(/\D/g, "");
-    let yyyyPart = (parts[2] ?? "").replace(/\D/g, "");
+    const yyyyPart = (parts[2] ?? "").replace(/\D/g, "");
 
     if (endsWithSlash) {
       if (mmPart.length === 1 && parts.length >= 2 && ddPart.length === 0) {
@@ -417,6 +426,7 @@ export default function AddRecordModal({
                     <label className="field">
                       <span>Date</span>
                       <input
+                        ref={dateInputRef}
                         type="text"
                         placeholder="04/24/2024"
                         value={dateValue}
